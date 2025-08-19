@@ -1,0 +1,20 @@
+{
+  "langrev": "1",
+  "warnings": ["no-unused"],
+  "dependency-search-paths": ["lib"],
+  "dependencies": ["raylib", "nk"],
+  "authors": ["LowByteFox"],
+  "version": "0.1.0",
+  "sources": ["src/**"],
+  "linker-search-paths": ["build/miniroot-linux/lib", "build/miniroot-win/lib"],
+  "linked-libraries": ["raylib", "raylib-nuklear"],
+  "test-sources": ["test/**"],
+  "output": "build",
+  "targets": {
+    "novaboard": {
+      "type": "executable"
+    }
+  },
+  "cpu": "generic",
+  "opt": "O0"
+}

@@ -1,0 +1,31 @@
+{ 
+  "provides" : "raylib",
+  "targets" : {
+    "macos-x64" : {
+      "link-args" : [],
+      "dependencies" : [],
+      "linked-libraries" : ["raylib", "Cocoa.framework", "OpenGL.framework", "CoreVideo.framework", "GLUT.framework", "IOKit.framework"]
+    },
+    "macos-aarch64" : {
+      "link-args" : [],
+      "dependencies" : [],
+      "linked-libraries" : ["raylib", "Cocoa.framework", "OpenGL.framework", "CoreVideo.framework", "GLUT.framework", "IOKit.framework"]
+    },
+    "linux-x64" : {
+      "link-args" : [],
+      "dependencies" : [],
+      "linked-libraries" : ["raylib"]
+    },
+    "freebsd-x64" : {
+      "link-args" : [],
+      "dependencies" : [],
+      "linked-libraries" : ["raylib"]
+    },
+	  "windows-x64" : {
+		  "linked-libraries" : ["gdi32", "winmm"],
+	  },
+    "wasm32" : {
+      "linked-libraries" : ["raylib"]
+    }
+  }
+}
