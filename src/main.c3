@@ -6,32 +6,17 @@ import raylib5::rl;
 import novaboard::raylib_nk;
 
 import std::math @public, std::math::easing;
-import std::collections::tuple;
 import std::collections::map;
-import std::hash::fnv32a;
+import novaboard::tile;
 
 const FONT = $embed("../resources/Ubuntu-R.ttf");
 const isz TILE_SIZE = 512;
-
-alias Tile = Tuple{isz, isz};
-
-fn uint Tile.hash(&self)
-{
-    return fnv32a::hash(
-        @as_char_view(self)
-    );
-}
-
-fn bool Tile.equals(&self, Tile other) @operator(==)
-{
-    return self.first == other.first && self.second == other.second;
-}
 
 fn int main(String[] args)
 {
     rl::setConfigFlags(rl::FLAG_WINDOW_RESIZABLE);
     rl::initWindow(640, 480, "Novaboard");
-    rl::setTargetFPS(120);
+    rl::setTargetFPS(60);
     defer rl::closeWindow();
 
     Font fnt = rl::loadFontFromMemory(".ttf", FONT.ptr, FONT.len, 32, null, 0);
@@ -49,10 +34,12 @@ fn int main(String[] args)
 
     float target_zoom = 1.0f;
 
-    Tile last_tile;
-    RenderTexture2D *last;
-
     HashMap{Tile, rl::RenderTexture2D} tiles;
+    tiles.init(mem);
+
+    Vector2 mouse_world_prev;
+    bool drawing = false;
+    Tile previous_tile;
 
     while (!rl::windowShouldClose()) {
         int width = rl::getScreenWidth();
@@ -67,28 +54,43 @@ fn int main(String[] args)
             delta = rl::vector2Scale(delta, -1.0f/camera.zoom);
             camera.target = rl::vector2Add(camera.target, delta);
         } else if (rl::isMouseButtonDown(rl::MouseButton.LEFT)) {
-            isz tile_x = (isz) math::floor(mouse_world.x / TILE_SIZE);
-            isz tile_y = (isz) math::floor(mouse_world.y / TILE_SIZE);
-            isz local_x = (isz) math::floor(mouse_world.x % TILE_SIZE);
-            isz local_y = (isz) math::floor(mouse_world.y % TILE_SIZE);
-            if (local_x < 0) local_x += TILE_SIZE;
-            if (local_y < 0) local_y += TILE_SIZE;
-            Tile current = {tile_x, tile_y};
+            Tile current;
+            if (!drawing) {
+                current = tile::new(mouse_world, TILE_SIZE);
+                isz local_x = (isz) math::floor(mouse_world.x % TILE_SIZE);
+                isz local_y = (isz) math::floor(mouse_world.y % TILE_SIZE);
+                if (local_x < 0) local_x += TILE_SIZE;
+                if (local_y < 0) local_y += TILE_SIZE;
 
-            rl::RenderTexture2D *img;
+                rl::RenderTexture2D *img = current.get_texture(&tiles, TILE_SIZE);
 
-            if (current == last_tile && last != null) {
-                img = last;
-            } else if (try img2 = tiles.get_ref(current)) {
-                img = img2;
+                rl::beginTextureMode(*img);
+                    rl::drawCircle((int) local_x, (int) local_y, 3, rl::WHITE);
+                rl::endTextureMode();
             } else {
-                tiles[current] = rl::loadRenderTexture(TILE_SIZE, TILE_SIZE);
-                img = tiles.get_ref(current)!!;
-            }
+                Tile previous = tile::new(mouse_world_prev, TILE_SIZE);
+                current = tile::new(mouse_world, TILE_SIZE);
 
-            rl::beginTextureMode(*img);
-            rl::drawCircle((int) local_x, (int) local_y, 3, rl::WHITE);
-            rl::endTextureMode();
+                rl::RenderTexture2D *img = current.get_texture(&tiles, TILE_SIZE);
+
+                rl::beginTextureMode(*img);
+                tile::connect_tiles({ previous, mouse_world_prev },
+                    { current, mouse_world }, TILE_SIZE);
+                rl::endTextureMode();
+
+                img = previous.get_texture(&tiles, TILE_SIZE);
+
+                rl::beginTextureMode(*img);
+                tile::connect_tiles({ current, mouse_world },
+                    { previous, mouse_world_prev }, TILE_SIZE);
+                rl::endTextureMode();
+            }
+            drawing = true;
+            mouse_world_prev = mouse_world;
+            previous_tile = current;
+        } else {
+            drawing = false;
+            mouse_world_prev = {0, 0};
         }
 
         float wheel = rl::getMouseWheelMove();
@@ -97,7 +99,7 @@ fn int main(String[] args)
             camera.offset = rl::getMousePosition();
             camera.target = mouseWorldPos;
 
-            target_zoom = math::clamp(camera.zoom + wheel * 0.1f, 0.077f, 2.0f);
+            target_zoom = math::clamp(camera.zoom + wheel * 0.1f, 0.25f, 2.0f);
         }
 
         camera.zoom = math::lerp(camera.zoom, target_zoom, 0.25f);
@@ -118,8 +120,7 @@ fn int main(String[] args)
 
         for (isz tx = min_tx; tx < max_tx; tx++) {
             for (isz ty = min_ty; ty < max_ty; ty++) {
-                if (try rl::RenderTexture2D *tile = tiles.get_ref({tx, ty})) {
-
+                if (try rl::RenderTexture2D *tile = tiles.get_ref((Tile) {tx, ty})) {
                     rl::Rectangle src = {0, 0, TILE_SIZE, -TILE_SIZE};
                     rl::Rectangle dst = {(float) tx * TILE_SIZE, (float) ty * TILE_SIZE, TILE_SIZE, TILE_SIZE};
 
